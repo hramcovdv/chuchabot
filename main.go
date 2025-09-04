@@ -12,12 +12,19 @@ import (
 )
 
 var (
-	sendUrl string
+	apiToken string
+	sendUrl  string
 )
 
 func init() {
-	if err := godotenv.Load(); err != nil {
+	err := godotenv.Load()
+	if err != nil {
 		log.Print(".env file found")
+	}
+
+	apiToken = os.Getenv("TELEGRAM_BOT_API_TOKEN")
+	if apiToken == "" {
+		log.Fatal("telegram API token is required")
 	}
 
 	sendUrl = os.Getenv("TELEGRAM_BOT_SEND_URL")
@@ -27,7 +34,7 @@ func init() {
 }
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_BOT_API_TOKEN"))
+	bot, err := tgbotapi.NewBotAPI(apiToken)
 	if err != nil {
 		log.Fatalf("telegram error: %s", err.Error())
 	}
@@ -45,7 +52,8 @@ func main() {
 
 	for update := range updates {
 		if update.Message != nil {
-			if err := sendJson(sendUrl, update.Message); err != nil {
+			err := sendJson(sendUrl, update.Message)
+			if err != nil {
 				log.Printf("send error: %s", err.Error())
 			}
 		}
