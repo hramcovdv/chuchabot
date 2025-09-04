@@ -1,0 +1,11 @@
+services:
+  chuchabot:
+    image: chuchabot
+    container_name: chuchabot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      TELEGRAM_BOT_API_TOKEN: <your_token>
+      TELEGRAM_BOT_SEND_URL: <your_url>
+    restart: always
