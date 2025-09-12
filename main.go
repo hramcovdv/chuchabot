@@ -16,10 +16,35 @@ var (
 	sendUrl  string
 )
 
+type Core struct {
+	ch chan tgbotapi.Update
+}
+
+func NewCore(size int) *Core {
+	return &Core{
+		ch: make(chan tgbotapi.Update, size),
+	}
+}
+
+func (c *Core) update(u tgbotapi.Update) {
+	c.ch <- u
+}
+
+func (c *Core) loop() {
+	for u := range c.ch {
+		if !u.Message.IsCommand() {
+			err := sendJson(sendUrl, u.Message)
+			if err != nil {
+				log.Printf("error: %s", err.Error())
+			}
+		}
+	}
+}
+
 func init() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Print(".env file found")
+		log.Print(".env file not found")
 	}
 
 	apiToken = os.Getenv("TELEGRAM_BOT_API_TOKEN")
@@ -50,11 +75,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	core := NewCore(10)
+	go core.loop()
+
 	for update := range updates {
 		if update.Message != nil {
-			err := sendJson(sendUrl, update.Message)
-			if err != nil {
-				log.Printf("send error: %s", err.Error())
+			if !update.Message.IsCommand() {
+				core.update(update)
 			}
 		}
 	}
@@ -67,6 +94,7 @@ func sendJson(url string, data any) error {
 	}
 
 	requestBody := bytes.NewBuffer(jsonData)
+
 	resp, err := http.Post(url, "application/json", requestBody)
 	if err != nil {
 		return err
