@@ -17,28 +17,32 @@ var (
 )
 
 type Core struct {
-	ch chan tgbotapi.Update
+	ch chan *tgbotapi.Message
 }
 
-func NewCore(size int) *Core {
-	return &Core{
-		ch: make(chan tgbotapi.Update, size),
+func NewCore() *Core {
+	core := &Core{
+		ch: make(chan *tgbotapi.Message, 10),
 	}
-}
 
-func (c *Core) update(u tgbotapi.Update) {
-	c.ch <- u
+	go core.loop()
+
+	return core
 }
 
 func (c *Core) loop() {
-	for u := range c.ch {
-		if !u.Message.IsCommand() {
-			err := sendJson(sendUrl, u.Message)
+	for msg := range c.ch {
+		if !msg.IsCommand() {
+			err := sendJson(sendUrl, msg)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
 			}
 		}
 	}
+}
+
+func (c *Core) Recive(msg *tgbotapi.Message) {
+	c.ch <- msg
 }
 
 func init() {
@@ -75,14 +79,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	core := NewCore(10)
-	go core.loop()
+	core := NewCore()
 
 	for update := range updates {
 		if update.Message != nil {
-			if !update.Message.IsCommand() {
-				core.update(update)
-			}
+			core.Recive(update.Message)
 		}
 	}
 }
